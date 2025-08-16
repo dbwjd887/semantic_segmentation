@@ -162,7 +162,7 @@ def cylinder_in_mask(
         cyl = np.zeros_like(binary_mask, dtype=np.uint8) # binary_mask와 같은 크기의 0 배열 생성
         cyl[x0:x1, y0:y1, z0:z1] = inside_cyl.astype(np.uint8) # inside_cyl 배열값 모두 True/False에서 1/0로 변환
         
-        cyl_in = (cyl & binary_mask).astype(np.uint8) # AND(교집합), 실제 마스크와 겹치는 부분만 포함하는 실린더 생성
+        cyl_in = cyl & binary_mask # AND(교집합), 실제 마스크와 겹치는 부분만 포함하는 실린더 생성
 
         nib.save(nib.Nifti1Image(cyl_in, affine, nii.header), out_path) # 파일 저장
         
