@@ -95,7 +95,7 @@ def cylinder_in_mask(
         radius_mm: float = 10.0, # 실린더 반지름, 경계까지 거리보다 크면 자동 축소
         height_mm: float | None = None,  # 실린더 높이, None이면 z축 방향으로 확장
         margin_mm: float = 1.5 # 경계에 닿지 않게 margin 설정
-    ) -> dict : # 실린더 중심, 반지름, 높이, Voxel 수 등
+    ): # 실린더 중심, 반지름, 높이, Voxel 수 등
     
     nii = nib.load(mask_path) # mask NIfTI 파일 읽기, nii 객체
     binary_mask = (nii.get_fdata() > 0).astype(np.uint8) # mask 데이터를 읽은 뒤 0/1로 반환 (True:1, False:0), uint8로 저장
@@ -103,7 +103,7 @@ def cylinder_in_mask(
     vx, vy, vz = nii.header.get_zooms()[:3] # voxel 크기(mm/voxel), zz가 slice thickness / nii.header.get_zooms()랑 같음
 
     edt = distance_transform_edt(binary_mask, sampling = (vx, vy, vz)) # 마스크 안에서 각 voxel에서 가장 가까운 경계까지 거리(mm), 최소 거리
-    center_index = np.unravel_index(np.argmax(edt), edt.shape) # center가 최대인 voxel index = 마스크 경계에서 가장 멀리 떨어진 곳 -> 실린더 중심 index 번호, ex) [10, 30, 50]
+    center_index = np.unravel_index(np.argmax(edt), edt.shape) # center = 마스크 경계에서 가장 멀리 떨어진 곳 -> 실린더 중심 index 번호, ex) [10, 30, 50]
     cx, cy, cz = map(int, center_index) # 10, 30, 50 
 
     # 반지름 결정
@@ -138,14 +138,14 @@ def cylinder_in_mask(
         height = max(vz, half_height_up + half_height_down) # Voxel 하나 사이즈 vs 확장 시킨 높이 비교
 
         # 실린더 생성 영역 제한, x,y,z축 Voxel 수 계산 (최대한 크게 잡기)
-        pad_x = int(np.ceil(radius / vx)) + 2
-        pad_y = int(np.ceil(radius / vy)) + 2
-        pad_z = int(np.ceil(height / vz)) + 2
+        box_x = int(np.ceil(radius / vx)) + 2
+        box_y = int(np.ceil(radius / vy)) + 2
+        box_z = int(np.ceil(height / vz)) + 2
         
         # binary_mask.shape : 배열 크기, (X, Y, Z) = (256, 256, 180)이면 shape[0] = 256 (X축 길이)
-        x0, x1 = max(0, cx - pad_x), min(binary_mask.shape[0], cx + pad_x + 1) # center index에서 왼쪽, 오른쪽으로 반지름 voxel 수만큼 영역 잡기
-        y0, y1 = max(0, cy - pad_y), min(binary_mask.shape[1], cy + pad_y + 1)
-        z0, z1 = max(0, cz - pad_z), min(binary_mask.shape[2], cz + pad_z + 1)
+        x0, x1 = max(0, cx - box_x), min(binary_mask.shape[0], cx + box_x + 1) # center index에서 왼쪽, 오른쪽으로 반지름 voxel 수만큼 영역 잡기
+        y0, y1 = max(0, cy - box_y), min(binary_mask.shape[1], cy + box_y + 1)
+        z0, z1 = max(0, cz - box_z), min(binary_mask.shape[2], cz + box_z + 1)
 
         X, Y, Z = np.meshgrid(
             np.arange(x0, x1), # index x0, x0 + 1, x0 + 2, ...., x1 -1, x1 갖는 배열 생성
