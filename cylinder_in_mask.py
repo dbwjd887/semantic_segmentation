@@ -90,7 +90,7 @@ def cylinder_in_mask(
     
 if __name__ == "__main__":
     
-    info_left = cylinder_in_mask("/Users/kimyujung/Desktop/seg_nifti/kidney_left.nii.gz", "/Users/kimyujung/Desktop/seg_nifti/cylinder_kidney_left")
-    info_right = cylinder_in_mask("/Users/kimyujung/Desktop/seg_nifti/kidney_right.nii.gz", "/Users/kimyujung/Desktop/seg_nifti/cylinder_kidney_right")
+    info_left = cylinder_in_mask("/Users/kimyujung/Desktop/seg_nifti/hip_left.nii.gz", "/Users/kimyujung/Desktop/cylinder_left")
+    info_right = cylinder_in_mask("/Users/kimyujung/Desktop/seg_nifti/hip_right.nii.gz", "/Users/kimyujung/Desktop/cylinder_right")
 
 

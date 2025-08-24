@@ -90,21 +90,26 @@ def save_mask_as_dicom(mask, orig_dir, out_dir, mask_description):
     print(f"[INFO] Saved DICOM series: {out_dir}")
     
 def cylinder_in_mask(
-        mask_path: str, # mask 파일 경로
+        binary_mask: np.ndarray,
+        reference_nii: nib.Nifti1Image,
         out_path: str,  # 결과 저장 경로
         radius_mm: float = 10.0, # 실린더 반지름, 경계까지 거리보다 크면 자동 축소
         height_mm: float | None = None,  # 실린더 높이, None이면 z축 방향으로 확장
         margin_mm: float = 1.5 # 경계에 닿지 않게 margin 설정
-    ): # 실린더 중심, 반지름, 높이, Voxel 수 등
+    ) -> np.darray:
     
-    nii = nib.load(mask_path) # mask NIfTI 파일 읽기, nii 객체
-    binary_mask = (nii.get_fdata() > 0).astype(np.uint8) # mask 데이터를 읽은 뒤 0/1로 반환 (True:1, False:0), uint8로 저장
-    affine = nii.affine # voxel 인덱스 (i, j, k) <-> 실제 위치 (x, y, z) mm 변환하는 행렬
-    vx, vy, vz = nii.header.get_zooms()[:3] # voxel 크기(mm/voxel), zz가 slice thickness / nii.header.get_zooms()랑 같음
+    # nii = nib.load(mask_path) # mask NIfTI 파일 읽기, nii 객체
+    # binary_mask = (nii.get_fdata() > 0).astype(np.uint8) # mask 데이터를 읽은 뒤 0/1로 반환 (True:1, False:0), uint8로 저장
+    # affine = nii.affine # voxel 인덱스 (i, j, k) <-> 실제 위치 (x, y, z) mm 변환하는 행렬
+    # vx, vy, vz = nii.header.get_zooms()[:3] # voxel 크기(mm/voxel), zz가 slice thickness / nii.header.get_zooms()랑 같음
+
+    affine = reference_nii.affine
+    header = reference_nii.header
+    vx, vy, vz = reference_nii.header.get_zooms()[:3]
 
     edt = distance_transform_edt(binary_mask, sampling = (vx, vy, vz)) # 마스크 안에서 각 voxel에서 가장 가까운 경계까지 거리(mm), 최소 거리
-    center_index = np.unravel_index(np.argmax(edt), edt.shape) # center = 마스크 경계에서 가장 멀리 떨어진 곳 -> 실린더 중심 index 번호, ex) [10, 30, 50]
-    cx, cy, cz = map(int, center_index) # 10, 30, 50 
+    # center_index = np.unravel_index(np.argmax(edt), edt.shape) # center = 마스크 경계에서 가장 멀리 떨어진 곳 -> 실린더 중심 index 번호, ex) [10, 30, 50]
+    cx, cy, cz = map(int, np.unravel_index(np.argmax(edt), edt.shape)) # 10, 30, 50 
 
     # 반지름 결정
     radius = float(radius_mm)
@@ -157,14 +162,14 @@ def cylinder_in_mask(
         dist_xy2 = ((X - cx) * vx) ** 2 + ((Y - cy) * vy) ** 2 # (X-cx)^2 + (Y-cy)^2 <= r^2
         dist_z = np.abs((Z - cz) * vz) # Z축 중심 기준으로 위아래 다 포함
 
-        inside_cyl = ((dist_xy2 <= radius_mm ** 2) & (dist_z <= height)) # 원기둥 형태 실린더 생성
+        inside_cyl = ((dist_xy2 <= radius ** 2) & (dist_z <= height)) # 원기둥 형태 실린더 생성
         
         cyl = np.zeros_like(binary_mask, dtype=np.uint8) # binary_mask와 같은 크기의 0 배열 생성
         cyl[x0:x1, y0:y1, z0:z1] = inside_cyl.astype(np.uint8) # inside_cyl 배열값 모두 True/False에서 1/0로 변환
         
-        cyl_in = cyl & binary_mask # AND(교집합), 실제 마스크와 겹치는 부분만 포함하는 실린더 생성
+        cyl_in = (cyl & (binary_mask > 0).astype(np.uint8)).astype(np.uint8) # AND(교집합), 실제 마스크와 겹치는 부분만 포함하는 실린더 생성
 
-        nib.save(nib.Nifti1Image(cyl_in, affine, nii.header), out_path) # 파일 저장
+        nib.save(nib.Nifti1Image(cyl_in, affine, header), out_path) # 파일 저장
         
         # center_mm = (affine @ np.array([cx, cy, cz, 1.0]))[:3] # 중심 voxel indexl를 mm로 변환
 
@@ -217,8 +222,8 @@ if __name__ == "__main__":
     )
     #roi_subset=['hip_left', 'hip_right', 'femur_left', 'femur_right']
     #task = hip_implant
-    # seg_data = seg_img.get_fdata().astype(np.uint8)  # (X, Y, Z), 0/1
-    seg_data = cylinder_in_mask(temp_nifti, out_nifti + "\\left_hip.nii.gz") # out_nifti 폴더 내 사용할 segmentation 파일 지정
+    seg_data = seg_img.get_fdata().astype(np.uint8)  # (X, Y, Z), 0/1
+    cylinder = cylinder_in_mask(seg_data, ) # out_nifti 폴더 내 사용할 segmentation 파일 지정
     
     mask_data = np.transpose(seg_data, (2, 1, 0)) 
     mask_description = roi_subset[0]
