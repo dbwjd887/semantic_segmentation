@@ -219,7 +219,7 @@ def cylinder_in_mask(
     
     affine = reference_nii.affine 
     header = reference_nii.header
-    vx, vy, vz = reference_nii.header.get_zooms()[:3] 
+    vx, vy, vz = header.get_zooms()[:3] 
 
     edt = distance_transform_edt(binary_mask, sampling = (vx, vy, vz))
     cx, cy, cz = map(int, np.unravel_index(np.argmax(edt), edt.shape)) 
@@ -368,3 +368,4 @@ if __name__ == "__main__":
         save_mask_series_as_dicom(mask_slices, slices_sorted, out_dicom_dir, series_description=name)
 
     print("[DONE] TS → CT-grid align → per-slice mask DICOM export 완료")
+
